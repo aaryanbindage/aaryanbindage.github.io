@@ -222,3 +222,5 @@ fs.writeFileSync(`${OUT}/.nojekyll`, '');
 // Google Search Console verification files (googleXXXX.html) dropped in the repo root get published too.
 for (const f of fs.readdirSync('.')) if (/^google[0-9a-f]+\.html$/.test(f)) fs.copyFileSync(f, `${OUT}/${f}`);
 console.log(`built ${repos.length} projects, ${urls.length} sitemap urls`);
+// IndexNow key file (<key>.txt): lets the IndexNow step in pages.yml submit the sitemap to Bing, Yandex and others.
+for (const f of fs.readdirSync('.')) if (/^[0-9a-f]{32}\.txt$/.test(f)) fs.copyFileSync(f, `${OUT}/${f}`);
