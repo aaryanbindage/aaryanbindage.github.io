@@ -18,7 +18,7 @@ async function gh(path) {
 
 const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-const SKIP = new Set([`${USER}.github.io`, USER, "scoop-twinbraid", "homebrew-twinbraid"]);
+const SKIP = new Set([`${USER}.github.io`, USER, "scoop-twinbraid", "homebrew-twinbraid", "homebrew-tap"]);
 const repos = (await gh(`/users/${USER}/repos?per_page=100&type=owner&sort=pushed`))
   .filter((r) => !r.fork && !r.private && !r.archived && !SKIP.has(r.name) && r.description);
 
