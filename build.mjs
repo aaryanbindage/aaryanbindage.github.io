@@ -22,6 +22,13 @@ const SKIP = new Set([`${USER}.github.io`, USER, "scoop-twinbraid", "homebrew-tw
 const repos = (await gh(`/users/${USER}/repos?per_page=100&type=owner&sort=pushed`))
   .filter((r) => !r.fork && !r.private && !r.archived && !SKIP.has(r.name) && r.description);
 
+// Live sites whose source is private: listed by hand, with no Source link or README.
+repos.push({
+  name: 'Domus', live: true, homepage: 'https://domusnation.duckdns.org/', image: 'https://domusnation.duckdns.org/img/og.png',
+  description: 'Domus: A free online nation you can join. Become a citizen with a signed digital passport, apply for the National Council or a government office, debate and vote on laws, and trade in the marketplace.',
+  topics: ['online-nation', 'micronation', 'community', 'digital-passport', 'government', 'roleplay'], stargazers_count: 0, pushed_at: new Date().toISOString(),
+});
+
 // Projects with a live site first, then by stars, then most recently pushed.
 repos.sort((a, b) => (!!b.homepage - !!a.homepage) || (b.stargazers_count - a.stargazers_count) || (new Date(b.pushed_at) - new Date(a.pushed_at)));
 
@@ -54,7 +61,7 @@ const cards = repos.map((r) => {
   <h2><a href="${page(r)}">${esc(title(r))}</a></h2>
   <p>${esc(blurb(r))}</p>
   <ul class="tags">${topics}</ul>
-  <footer>${r.language ? `<span>${esc(r.language)}</span>` : ''}${r.stargazers_count ? `<span>★ ${r.stargazers_count}</span>` : ''}<span class="grow"></span><a href="${esc(r.html_url)}">Source</a>${live}</footer>
+  <footer>${r.language ? `<span>${esc(r.language)}</span>` : ''}${r.stargazers_count ? `<span>★ ${r.stargazers_count}</span>` : ''}<span class="grow"></span>${r.html_url ? `<a href="${esc(r.html_url)}">Source</a>` : ''}${live}</footer>
 </article>`;
 }).join('\n');
 
@@ -66,7 +73,7 @@ const ld = {
     '@type': 'SoftwareSourceCode',
     name: title(r),
     description: r.description,
-    codeRepository: r.html_url,
+    codeRepository: r.html_url || undefined,
     programmingLanguage: r.language || undefined,
     keywords: (r.topics || []).join(', ') || undefined,
     url: r.homepage || r.html_url,
@@ -147,8 +154,8 @@ fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT);
 
 for (const r of repos) {
-  const readme = await ghRaw(`/repos/${r.full_name}/readme`, 'application/vnd.github.html');
-  const release = JSON.parse((await ghRaw(`/repos/${r.full_name}/releases/latest`, 'application/vnd.github+json')) || 'null');
+  const readme = r.live ? null : await ghRaw(`/repos/${r.full_name}/readme`, 'application/vnd.github.html');
+  const release = r.live ? null : JSON.parse((await ghRaw(`/repos/${r.full_name}/releases/latest`, 'application/vnd.github+json')) || 'null');
   const name = title(r);
   const d = blurb(r).replace(/^./, (c) => c.toUpperCase());
   const ld = {
@@ -157,8 +164,8 @@ for (const r of repos) {
     name,
     description: d,
     url: page(r),
-    sameAs: [r.html_url, ...(r.homepage ? [r.homepage] : [])],
-    applicationCategory: 'DeveloperApplication',
+    sameAs: [r.html_url, r.homepage].filter(Boolean),
+    applicationCategory: r.live ? 'SocialNetworkingApplication' : 'DeveloperApplication',
     keywords: (r.topics || []).join(', ') || undefined,
     programmingLanguage: r.language || undefined,
     license: r.license?.spdx_id && r.license.spdx_id !== 'NOASSERTION' ? `https://spdx.org/licenses/${r.license.spdx_id}` : undefined,
@@ -171,7 +178,7 @@ for (const r of repos) {
   const links = [
     r.homepage && !r.homepage.startsWith(page(r)) ? `<a class="live" href="${esc(r.homepage)}">Open the app ↗</a>` : '',
     release ? `<a href="${esc(release.html_url)}">Download ${esc(release.tag_name)}</a>` : '',
-    `<a href="${esc(r.html_url)}">Source on GitHub</a>`,
+    r.html_url ? `<a href="${esc(r.html_url)}">Source on GitHub</a>` : '',
   ].join('');
   const out = `<!doctype html>
 <html lang="en">
@@ -186,7 +193,7 @@ for (const r of repos) {
 <meta property="og:title" content="${esc(name)}">
 <meta property="og:description" content="${esc(d)}">
 <meta property="og:url" content="${page(r)}">
-<meta property="og:image" content="https://opengraph.githubassets.com/1/${r.full_name}">
+<meta property="og:image" content="${r.image || `https://opengraph.githubassets.com/1/${r.full_name}`}">
 <meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>
 <style>${STYLE}${PAGE_STYLE}</style>
@@ -198,7 +205,7 @@ for (const r of repos) {
   <p class="lede">${esc(d)}</p>
   <ul class="tags">${(r.topics || []).map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
   <div class="actions">${links}</div>
-  ${readme ? `<div class="readme">${absolutize(readme, r)}</div>` : ''}
+  ${readme ? `<div class="readme">${absolutize(readme, r)}</div>` : ''}${r.image ? `<a href="${esc(r.homepage)}"><img src="${esc(r.image)}" alt="${esc(name)}" style="width:100%;height:auto;border-radius:14px"></a>` : ''}
 </div>
 </body>
 </html>
